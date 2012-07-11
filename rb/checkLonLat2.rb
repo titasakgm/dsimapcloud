@@ -1,7 +1,8 @@
 #!/usr/bin/ruby
 
 require 'cgi'
-require 'postgres'
+require 'rubygems'
+require 'pg'
 
 def dms2dd(dd,mm,ss)
   d = dd.to_f
@@ -30,7 +31,9 @@ def check_npark(lon,lat)
   found = res.num_tuples
   name = "NA"
   if (found == 1)
-    name = res[0][0]
+    res.each do |rec|
+      name = rec['name_th']
+    end
   end
   name
 end
@@ -44,7 +47,9 @@ def check_rforest(lon,lat)
   found = res.num_tuples
   name = "NA"
   if (found == 1)
-    name = res[0][0]
+    res.each do |rec|
+      name = rec['name_th']
+    end
   end
   name
 end

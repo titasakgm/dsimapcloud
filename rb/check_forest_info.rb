@@ -1,10 +1,11 @@
 #!/usr/bin/ruby
 
 require 'cgi'
-require 'postgres'
+require 'rubygems'
+require 'pg'
 
 def log(msg)
-  log = open("/tmp/dsi3.log","a")
+  log = open("/tmp/dsi-cloud.log","a")
   log.write(msg)
   log.write("\n")
   log.close
@@ -19,7 +20,9 @@ def check_npark(lon,lat)
   found = res.num_tuples
   name = "NA"
   if (found == 1)
-    name = res[0][0]
+    res.each do |rec|
+      name = '<b><bi>เขตอุทยาน' << rec['name_th'] << '</i></b>'
+    end
   end
   name
 end
@@ -36,17 +39,19 @@ def check_rforest(lon,lat)
   found = res.num_tuples
   msg = "NA"
   if (found == 1)
-    name = res[0][0]
-    mapsheet = res[0][1]
-    area_decla = res[0][2]
-    dec_date = res[0][3]
-    ratchakija = res[0][4]
-    ton = res[0][5]
-    msg = "<font face=\"time, serif\" size=\"4\">#{name}<br />ระวาง:#{mapsheet}<br/>"
-    msg += "พื้นที่:#{area_decla} ตร.กม.<br />ประกาศเมื่อ: #{dec_date}<br />"
-    msg += "ราชกิจจานุเบกษา: #{ratchakija} ตอนที่: #{ton}</font>"
+    res.each do |rec|
+      name = rec['name_th']
+      mapsheet = rec['mapsheet']
+      area_decla = rec['area_decla']
+      dec_date = rec['dec_date']
+      ratchakija = rec['ratchakija']
+      ton = rec['ton']
+      msg = "<font face=\"time, serif\" size=\"4\"><b><i>เขตป่าสงวน#{name}</i></b><br />ระวาง:#{mapsheet}<br/>"
+      msg += "พื้นที่:#{area_decla} ตร.ม.<br />ประกาศเมื่อ: #{dec_date}<br />"
+      msg += "ราชกิจจานุเบกษา: #{ratchakija} ตอนที่: #{ton}</font>"
+      end
   end
-  log("check_rforest-msg: #{msg}")
+  #log("check_rforest-msg: #{msg}")
   msg 
 end
 

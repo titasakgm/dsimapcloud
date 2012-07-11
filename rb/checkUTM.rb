@@ -1,7 +1,8 @@
 #!/usr/bin/ruby
 
 require 'cgi'
-require 'postgres'
+require 'rubygems'
+require 'pg'
 
 def dms2dd(dd,mm,ss)
   d = dd.to_f
@@ -18,12 +19,12 @@ def convert_gcs(n,e,z)
   end
 
   con = PGconn.connect("localhost",5432,nil,nil,"dsi","postgres")
-  sql = "SELECT astext(transform(geometryfromtext('POINT(#{e} #{n})',#{srid}), 4326))"
+  sql = "SELECT astext(transform(geometryfromtext('POINT(#{e} #{n})',#{srid}), 4326)) as geom"
   res = con.exec(sql)
   con.close
 
   #POINT(100.566084211455 13.8907665943153)
-  point = res[0][0].to_s.split('(').last.tr(')','').split(' ')
+  point = res[0]['geom'].to_s.split('(').last.tr(')','').split(' ')
   lon = point.first
   lat = point.last
   return [lon,lat]
@@ -38,7 +39,7 @@ def check_npark(lon,lat)
   found = res.num_tuples
   name = "NA"
   if (found == 1)
-    name = res[0][0]
+    name = res[0]['name_th']
   end
   name
 end
@@ -52,7 +53,7 @@ def check_rforest(lon,lat)
   found = res.num_tuples
   name = "NA"
   if (found == 1)
-    name = res[0][0]
+    name = res[0]['name_th']
   end
   name
 end
@@ -66,7 +67,7 @@ def check_uforest(lon,lat)
   found = res.num_tuples
   name = "NA"
   if (found == 1)
-    name = res[0][0]
+    name = res[0]['forest_n']
   end
   name
 end

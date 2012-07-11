@@ -1,14 +1,16 @@
 #!/usr/bin/ruby
 
 require 'cgi'
-require 'postgres'
 require 'net/http'
 require 'rubygems'
 require 'json'
+require 'pg'
 
 def log(msg)
-  File.open("/tmp/search-googlex","a").write(msg)
-  File.open("/tmp/search-googlex","a").write("\n")
+  f = open("/tmp/search-googlex","a")
+  f.write(msg)
+  f.write("\n")
+  f.close
 end
 
 def create_hili_map(table,gid)
@@ -20,27 +22,40 @@ def create_hili_map(table,gid)
     geom = "POINT"
   end
 
-  log("filter: #{filter}")
-
-  map = open("/ms521/map/search.tpl").readlines.to_s.gsub('#GEOM#',"#{geom}").gsub('#TABLE#',"#{table}").gsub('#FILTER#',"#{filter}")
-
-  File.open("/ms521/map/hili.map","w").write(map)
+  #log("filter: #{filter}")
+  src = open('/ms603/map/search.tpl').readlines
+  dst = open('/ms603/map/hili.map','w')
+  
+  src.each do |line|
+    if line =~ /XXGEOMXX/
+      line = line.gsub(/XXGEOMXX/,"#{geom}")
+    elsif line =~ /XXTABLE/
+      line = line.gsub(/XXTABLEXX/,"#{table}")
+    elsif line =~ /XXFILTERXX/
+      line = line.gsub(/XXFILTERXX/,"#{filter}")
+    end
+    dst.write(line)
+  end
+  dst.close
   ##### End of create hilight
 
 end
 
 def get_center(table,gid)
-  con = PGconn.connect("localhost",5432,nil,nil,"dsi")
-  sql = "SELECT center(the_geom) "
+  con = PGconn.connect("localhost",5432,nil,nil,"dsi","admin")
+  sql = "SELECT center(the_geom) as centerx "
   sql += "FROM #{table} "
   sql += "WHERE gid=#{gid}"
+  
+  log("get_center:sql: #{sql}")
+  
   res = con.exec(sql)
   con.close
   found = res.num_tuples
   lonlat = []
   if (found == 1)
     res.each do |rec|
-      lonlat = rec[0].to_s.tr('()','').split(',')
+      lonlat = rec['centerx'].to_s.tr('()','').split(',')
       lon = sprintf("%0.2f", lonlat[0].to_f)
       lat = sprintf("%0.2f", lonlat[1].to_f)
       lonlat = [lon,lat]
@@ -50,12 +65,47 @@ def get_center(table,gid)
 end
 
 def search_location(query, start, limit, exact)
-  con = PGconn.connect("localhost",5432,nil,nil,"dsi")
+  lon = lat = 0.0
+  
+  con = PGconn.connect("localhost",5432,nil,nil,"dsi","admin")
+
   cond = nil
 
   if exact == 1
-    cond = "loc_text = '#{query}' "
-  elsif query.include?('.')
+    sql = "SELECT loc_gid,loc_text,loc_table "
+    sql += "FROM locations "
+    sql += "WHERE loc_text = '#{query}' LIMIT 1"
+    res = con.exec(sql)
+
+    gid = 0
+    text = nil
+    table = nil
+    res.each do |rec|
+      gid = rec['loc_gid']
+      text = rec['loc_text']
+      table = rec['loc_table']
+    end
+  
+    lonlat = get_center(table,gid)
+    lon = lonlat[0]
+    lat = lonlat[1]  
+  
+    create_hili_map(table,gid)
+  
+    return_data = Hash.new
+    return_data[:success] = true
+    return_data[:totalcount] = 1
+    return_data[:records] = [{
+      :loc_gid => gid,
+      :loc_text => text,
+      :loc_table => table,
+      :lon => lon, 
+      :lat => lat
+    }]    
+    return return_data
+  end
+  
+  if query =~ /\./
     cond = "loc_text LIKE '#{query}%' "
   elsif query.strip =~ /\ /
     kws = query.strip.split(' ')
@@ -74,15 +124,18 @@ def search_location(query, start, limit, exact)
     cond = "loc_text LIKE '%#{query}%' "
   end
 
-  sql = "SELECT count(*) FROM locations WHERE #{cond}" 
-
-  log("sql: #{sql}")
+  log("cond: #{cond}")
+  
+  sql = "SELECT count(*) as cnt FROM locations WHERE #{cond}" 
 
   res = con.exec(sql)
-  found = res[0][0].to_i
+  found = 0
+  res.each do |rec|
+    found = rec['cnt'].to_i
+  end
 
   return_data = nil
-
+  
   if (found > 1)
     sql = "SELECT loc_gid,loc_text,loc_table "
     sql += "FROM locations "
@@ -90,36 +143,44 @@ def search_location(query, start, limit, exact)
     sql += "ORDER BY id DESC "
     sql += "LIMIT #{limit} OFFSET #{start}"
 
-    log("sql>1: #{sql}")
-
     res = con.exec(sql)
-
+    records = []
+    res.each do |rec|
+      gid = rec['loc_gid']
+      text = rec['loc_text']
+      table = rec['loc_table']
+      h = {:loc_gid => "#{gid}", :loc_text => "#{text}", :loc_table => "#{table}"}
+      records.push(h)
+    end
+    
+    #log("records[]: #{records}")
+    
     return_data = Hash.new
     return_data[:success] = true
     return_data[:totalcount] = found
-    return_data[:records] = res.collect{ |u| {
-      :loc_gid => u[0],
-      :loc_text => u[1],
-      :loc_table => u[2]
-    } }
+    return_data[:records] = records
+    
   elsif found == 1
     sql = "SELECT loc_gid,loc_text,loc_table "
     sql += "FROM locations "
     sql += "WHERE loc_text LIKE '%#{query}%' "
 
-    log("sql=1: #{sql}")
-
     res = con.exec(sql)
-
-    gid = res[0][0]
-    text = res[0][1]
-    table = res[0][2]
+    gid = 0
+    text = nil
+    table = nil
+    res.each do |rec|
+      gid = rec['loc_gid']
+      text = rec['loc_text']
+      table = rec['loc_table']
+    end
+  
     lonlat = get_center(table,gid)
     lon = lonlat[0]
     lat = lonlat[1]  
-
+  
     create_hili_map(table,gid)
- 
+  
     return_data = Hash.new
     return_data[:success] = true
     return_data[:totalcount] = 1
