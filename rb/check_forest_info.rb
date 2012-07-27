@@ -5,7 +5,7 @@ require 'rubygems'
 require 'pg'
 
 def log(msg)
-  log = open("/tmp/dsi-cloud.log","a")
+  log = open("/tmp/dsimapcloud.log","a")
   log.write(msg)
   log.write("\n")
   log.close
@@ -55,6 +55,78 @@ def check_rforest(lon,lat)
   msg 
 end
 
+def check_m30forest(lon,lat)
+  con = PGconn.connect("localhost",5432,nil,nil,"dsi","postgres")
+  sql = "select area,rai "
+  sql += "from mangrove_2530 "
+  sql += "where contains(the_geom,"
+  sql += "geometryfromtext('POINT(#{lon} #{lat})',4326))"
+  #log("check_m30forest-sql: #{sql}")
+  res = con.exec(sql)
+  con.close
+  found = res.num_tuples
+  msg = "NA"
+  if (found == 1)
+    res.each do |rec|
+      area = sprintf("%.2f", rec['area'].to_f)
+      rai = sprintf("%.2f", rec['rai'].to_f)
+      msg = "<font face=\"time, serif\" size=\"4\"><b><i>เขตป่าชายเลน 2530</i></b><br />"
+      msg += "พื้นที่:#{area} ตร.ม. (#{rai} ไร่)</font>"
+    end
+  end
+  #log("check_m30forest-msg: #{msg}")
+  msg 
+end
+
+def check_m43forest(lon,lat)
+  con = PGconn.connect("localhost",5432,nil,nil,"dsi","postgres")
+  sql = "select area,rai "
+  sql += "from mangrove_2543 "
+  sql += "where contains(the_geom,"
+  sql += "geometryfromtext('POINT(#{lon} #{lat})',4326))"
+  #log("check_m43forest-sql: #{sql}")
+  res = con.exec(sql)
+  con.close
+  found = res.num_tuples
+  msg = "NA"
+  if (found == 1)
+    res.each do |rec|
+      area = sprintf("%.2f", rec['area'].to_f)
+      rai = sprintf("%.2f", rec['rai'].to_f)
+      msg = "<font face=\"time, serif\" size=\"4\"><b><i>เขตป่าชายเลน 2543</i></b><br />"
+      msg += "พื้นที่:#{area} ตร.ม. (#{rai} ไร่)</font>"
+    end
+  end
+  #log("check_m43forest-msg: #{msg}")
+  msg 
+end
+
+def check_m52forest(lon,lat)
+  con = PGconn.connect("localhost",5432,nil,nil,"dsi","postgres")
+  sql = "select lu52_nam,amphoe_t,prov_nam_t,sq_km "
+  sql += "from mangrove_2552 "
+  sql += "where contains(the_geom,"
+  sql += "geometryfromtext('POINT(#{lon} #{lat})',4326))"
+  #log("check_m52forest-sql: #{sql}")
+  res = con.exec(sql)
+  con.close
+  found = res.num_tuples
+  msg = "NA"
+  if (found == 1)
+    res.each do |rec|
+      name = rec['lu52_nam']
+      amp = rec['amphoe_t']
+      prov = rec['prov_nam_t']
+      area = sprintf("%.2f", rec['sq_km'].to_f)
+      msg = "<font face=\"time, serif\" size=\"4\"><b><i>เขต#{name} 2552</i></b><br />"
+      msg += "#{amp} #{prov}<br />"
+      msg += "พื้นที่:#{area} ตร.ม.</font>"
+    end
+  end
+  #log("check_m52forest-msg: #{msg}")
+  msg 
+end
+
 c = CGI::new
 layer = c['layer']
 lon = c['lon'].to_f
@@ -66,6 +138,12 @@ if layer == 'national_park'
   msg = check_npark(lon,lat)
 elsif layer == 'reserve_forest'
   msg = check_rforest(lon,lat)
+elsif layer == 'mangrove_2530'
+  msg = check_m30forest(lon,lat)
+elsif layer == 'mangrove_2543'
+  msg = check_m43forest(lon,lat)
+elsif layer == 'mangrove_2552'
+  msg = check_m52forest(lon,lat)
 end
 
 data = "{'msg':'#{msg}','lon':'#{lon}','lat':'#{lat}'}"

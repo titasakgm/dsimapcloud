@@ -147,9 +147,9 @@ end
 
 #log("filter: #{filter}")
 
-map = open("/ms521/map/search.tpl").readlines.to_s.gsub('#GEOM#',"#{geom}").gsub('#TABLE#',"#{table}").gsub('#FILTER#',"#{filter}")
+map = open("/ms567/map/search.tpl").readlines.to_s.gsub('#GEOM#',"#{geom}").gsub('#TABLE#',"#{table}").gsub('#FILTER#',"#{filter}")
 
-File.open("/ms521/map/hili.map","w").write(map)
+File.open("/ms567/map/hili.map","w").write(map)
 ##### End of create hilight
 
 if lonlat.nil?

@@ -23,8 +23,8 @@ def create_hili_map(table,gid)
   end
 
   #log("filter: #{filter}")
-  src = open('/ms603/map/search.tpl').readlines
-  dst = open('/ms603/map/hili.map','w')
+  src = open('/ms567/map/search.tpl').readlines
+  dst = open('/ms567/map/hili.map','w')
   
   src.each do |line|
     if line =~ /XXGEOMXX/

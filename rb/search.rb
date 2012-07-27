@@ -50,8 +50,8 @@ data = "{'msg':'#{msg}','gid':'#{gid}','name':'#{name}','lon':'#{lon}','lat':'#{
 
 # Create hilight for this gid province
 
-map = open("/ms521/map/hili.tpl").readlines.to_s.gsub('XX',"gid = '#{gid}'")
-File.open("/ms521/map/hili.map","w").write(map)
+map = open("/ms567/map/hili.tpl").readlines.to_s.gsub('XX',"gid = '#{gid}'")
+File.open("/ms567/map/hili.map","w").write(map)
 
 print <<EOF
 Content-type: text/html
